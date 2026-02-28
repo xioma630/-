@@ -1,0 +1,435 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理人报酬计算器</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1a2e;
+    --ink-light: #3a3a5c;
+    --parchment: #f8f5ef;
+    --parchment-dark: #ede9e0;
+    --seal: #c0392b;
+    --gold: #b8960c;
+    --gold-light: #d4af37;
+    --success: #276749;
+    --accent: #1a4a7a;
+    --border: rgba(26,26,46,0.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Noto Sans SC', sans-serif;
+    background: var(--parchment);
+    min-height: 100vh;
+    color: var(--ink);
+    background-image:
+      radial-gradient(ellipse at 15% 15%, rgba(184,150,12,0.07) 0%, transparent 55%),
+      radial-gradient(ellipse at 85% 85%, rgba(192,57,43,0.05) 0%, transparent 55%);
+  }
+  .page-wrap { max-width: 920px; margin: 0 auto; padding: 44px 20px 64px; }
+
+  /* ── Header ── */
+  .header { text-align: center; margin-bottom: 50px; position: relative; }
+  .header::before, .header::after {
+    content: ''; position: absolute; top: 50%; width: 24%; height: 1px;
+    background: linear-gradient(to right, transparent, var(--gold-light), transparent);
+  }
+  .header::before { left: 0; }
+  .header::after  { right: 0; transform: scaleX(-1); }
+  .header-badge { font-family: 'Noto Serif SC', serif; font-size: 11px; letter-spacing: 5px; color: var(--gold); display: block; margin-bottom: 12px; }
+  .header h1 { font-family: 'Noto Serif SC', serif; font-size: clamp(24px, 4.5vw, 36px); font-weight: 700; letter-spacing: 5px; }
+  .header .subtitle { margin-top: 12px; font-size: 13px; color: var(--ink-light); line-height: 1.9; }
+  .header .subtitle code { font-family: 'DM Mono', monospace; background: rgba(26,26,46,0.07); padding: 1px 7px; border-radius: 3px; font-size: 12px; }
+
+  /* ── Card ── */
+  .card {
+    background: #fff; border: 1px solid var(--border); border-radius: 2px;
+    padding: 32px 40px; margin-bottom: 20px;
+    box-shadow: 0 2px 24px rgba(26,26,46,0.05);
+    position: relative;
+  }
+  .card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, var(--gold) 0%, var(--gold-light) 50%, var(--gold) 100%); }
+
+  .sec-label { font-family: 'Noto Serif SC', serif; font-size: 15px; font-weight: 600; letter-spacing: 2px; margin-bottom: 22px; display: flex; align-items: center; gap: 10px; }
+  .sec-label .n { width: 24px; height: 24px; background: var(--ink); color: #fff; border-radius: 50%; font-family: 'DM Mono', monospace; font-size: 11px; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+  /* ── Formula Banner ── */
+  .formula-banner {
+    background: var(--ink);
+    color: #fff;
+    border-radius: 2px;
+    padding: 18px 24px;
+    margin-bottom: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0;
+    flex-wrap: wrap;
+    font-family: 'DM Mono', monospace;
+    font-size: clamp(14px, 3vw, 20px);
+    letter-spacing: 1px;
+  }
+  .formula-banner .fb-box {
+    display: inline-flex; flex-direction: column; align-items: center;
+    padding: 6px 16px; margin: 4px;
+    border-radius: 2px;
+    min-width: 80px;
+  }
+  .formula-banner .fb-box.known { background: rgba(212,175,55,0.25); border: 1px solid rgba(212,175,55,0.5); }
+  .formula-banner .fb-box.unknown-r { background: rgba(192,57,43,0.2); border: 1px solid rgba(192,57,43,0.4); }
+  .formula-banner .fb-box.unknown-a { background: rgba(39,103,73,0.2); border: 1px solid rgba(39,103,73,0.4); }
+  .formula-banner .fb-label { font-size: 10px; letter-spacing: 2px; opacity: 0.7; margin-bottom: 3px; font-family: 'Noto Sans SC', sans-serif; }
+  .formula-banner .fb-sym { font-size: 1em; font-weight: 500; }
+  .formula-banner .op { font-size: 1.2em; padding: 0 8px; opacity: 0.6; align-self: center; }
+
+  /* ── Input ── */
+  .input-group { display: flex; align-items: stretch; border: 1.5px solid var(--border); border-radius: 2px; overflow: hidden; transition: border-color 0.2s, box-shadow 0.2s; }
+  .input-group:focus-within { border-color: var(--gold-light); box-shadow: 0 0 0 3px rgba(212,175,55,0.15); }
+  .input-prefix { background: var(--parchment-dark); border-right: 1.5px solid var(--border); padding: 0 18px; display: flex; align-items: center; font-size: 13px; color: var(--ink-light); white-space: nowrap; font-family: 'Noto Serif SC', serif; }
+  .input-main { flex: 1; border: none; outline: none; padding: 16px 18px; font-family: 'DM Mono', monospace; font-size: 26px; font-weight: 500; color: var(--ink); background: #fff; min-width: 0; }
+  .input-main::placeholder { color: #d0ccc4; }
+  .input-suffix { background: var(--parchment-dark); border-left: 1.5px solid var(--border); padding: 0 18px; display: flex; align-items: center; font-size: 13px; color: var(--ink-light); }
+  .input-hint { margin-top: 9px; font-size: 12px; color: #b0a898; }
+  .error-msg { display: none; color: var(--seal); font-size: 12.5px; margin-top: 8px; }
+  .error-msg.show { display: block; }
+
+  .btn-calc { width: 100%; margin-top: 26px; padding: 17px; background: var(--ink); color: #fff; border: none; border-radius: 2px; font-family: 'Noto Serif SC', serif; font-size: 17px; letter-spacing: 5px; cursor: pointer; transition: all 0.22s; }
+  .btn-calc:hover { background: #2e2e52; transform: translateY(-1px); box-shadow: 0 5px 18px rgba(26,26,46,0.22); }
+  .btn-calc:active { transform: translateY(0); }
+
+  /* ── Results ── */
+  .result-section { display: none; }
+  .result-section.visible { display: block; animation: fadeUp 0.35s ease; }
+  @keyframes fadeUp { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+
+  .result-trio { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 580px) { .result-trio { grid-template-columns: 1fr; } }
+
+  .rc { border-radius: 2px; padding: 20px 22px; position: relative; overflow: hidden; }
+  .rc.total  { background: linear-gradient(135deg,#f5f3ff,#ede9ff); border: 1.5px solid rgba(100,80,200,0.18); }
+  .rc.reward { background: linear-gradient(135deg,#fff5f5,#fff0ee); border: 1.5px solid rgba(192,57,43,0.18); }
+  .rc.payout { background: linear-gradient(135deg,#f0faf5,#edf8f2); border: 1.5px solid rgba(39,103,73,0.18); }
+  .rc .rc-tag { font-size: 11px; letter-spacing: 1.5px; margin-bottom: 7px; font-weight: 500; }
+  .rc.total  .rc-tag { color: #5b4db5; }
+  .rc.reward .rc-tag { color: var(--seal); }
+  .rc.payout .rc-tag { color: var(--success); }
+  .rc .rc-val { font-family: 'DM Mono', monospace; font-size: clamp(18px, 3vw, 26px); font-weight: 500; line-height: 1.1; margin-bottom: 4px; }
+  .rc.total  .rc-val { color: #5b4db5; }
+  .rc.reward .rc-val { color: var(--seal); }
+  .rc.payout .rc-val { color: var(--success); }
+  .rc .rc-sub { font-size: 11px; color: #b0a898; font-family: 'DM Mono', monospace; }
+  .rc .rc-icon { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 38px; opacity: 0.07; }
+
+  .verify-bar {
+    background: var(--parchment);
+    border: 1px solid var(--border);
+    border-radius: 2px;
+    padding: 12px 18px;
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--ink-light);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .verify-bar .vb-check { color: var(--success); font-size: 15px; }
+
+  hr.divider { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+
+  /* ── Steps ── */
+  .steps-title { font-family: 'Noto Serif SC', serif; font-size: 13px; letter-spacing: 2px; color: var(--ink-light); margin-bottom: 15px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  .step-row { display: flex; gap: 12px; margin-bottom: 10px; align-items: flex-start; font-size: 13px; line-height: 1.75; color: var(--ink-light); }
+  .step-row:last-child { margin-bottom: 0; }
+  .step-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--ink); color: #fff; font-family: 'DM Mono', monospace; font-size: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .hl { font-family: 'DM Mono', monospace; color: var(--ink); font-weight: 500; }
+  .hl-r { font-family: 'DM Mono', monospace; color: var(--seal); font-weight: 500; }
+  .hl-g { font-family: 'DM Mono', monospace; color: var(--success); font-weight: 500; }
+  .step-final { background: var(--parchment); border: 1px solid var(--border); border-radius: 2px; padding: 12px 16px; margin-top: 8px; }
+  .step-final .step-dot { background: var(--gold); }
+
+  /* ── Breakdown table ── */
+  .breakdown { margin: 10px 0 4px 32px; border: 1px solid var(--border); border-radius: 2px; overflow: hidden; font-size: 12.5px; }
+  .bd-head { display: grid; grid-template-columns: 1.8fr 0.9fr 1.3fr 1.3fr; background: var(--parchment-dark); padding: 8px 14px; font-size: 11.5px; color: var(--ink-light); font-weight: 500; }
+  .bd-row  { display: grid; grid-template-columns: 1.8fr 0.9fr 1.3fr 1.3fr; padding: 7px 14px; border-top: 1px solid var(--border); background: #fff; }
+  .bd-head span, .bd-row span { text-align: right; }
+  .bd-head span:first-child, .bd-row span:first-child { text-align: left; }
+  .bd-row span { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--ink-light); }
+  .bd-row span:first-child { font-family: 'Noto Sans SC', sans-serif; color: var(--ink); }
+  .bd-row.bd-total { background: var(--parchment); font-weight: 600; border-top: 1.5px solid var(--border); }
+  .bd-row.bd-total span { color: var(--ink); font-weight: 600; }
+
+  /* ── Reference table ── */
+  .ref-table { border: 1px solid var(--border); border-radius: 2px; overflow: hidden; }
+  .rt-head { display: grid; grid-template-columns: 1.8fr 1fr 1.3fr 1.3fr 1.4fr; background: var(--ink); color: #fff; padding: 11px 20px; font-size: 12px; letter-spacing: 0.5px; }
+  .rt-row  { display: grid; grid-template-columns: 1.8fr 1fr 1.3fr 1.3fr 1.4fr; padding: 10px 20px; border-bottom: 1px solid var(--border); align-items: center; transition: background 0.12s; }
+  .rt-row:last-child { border-bottom: none; }
+  .rt-row:hover { background: var(--parchment); }
+  .rt-head span, .rt-row span { text-align: right; }
+  .rt-head span:first-child, .rt-row span:first-child { text-align: left; }
+  .rt-row span { font-family: 'DM Mono', monospace; font-size: 11.5px; color: var(--ink-light); }
+  .rt-row span:first-child { font-family: 'Noto Sans SC', sans-serif; font-size: 12.5px; color: var(--ink); }
+  .rt-row.rt-active { background: linear-gradient(90deg, rgba(212,175,55,0.1) 0%, rgba(212,175,55,0.03) 100%); border-left: 3px solid var(--gold); }
+  .rt-row.rt-active span { color: var(--ink); }
+  .active-tag { display: inline-block; font-size: 10px; background: var(--gold); color: #fff; padding: 1px 7px; border-radius: 8px; margin-left: 6px; font-family: 'Noto Sans SC', sans-serif; font-weight: 500; vertical-align: middle; }
+
+  .note { font-size: 12px; color: #b0a898; margin-top: 14px; line-height: 1.85; }
+  .note strong { color: var(--ink-light); }
+  .footer { text-align: center; margin-top: 50px; font-size: 12px; color: #c8c0b4; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <div class="header">
+    <span class="header-badge">破产管理人</span>
+    <h1>报　酬　计　算　器</h1>
+    <div class="subtitle">
+      已知 <code>b = 清偿额(a) + 报酬(x)</code>，依法律比例反推报酬<br>
+      法律规定：x 是 a 的分段比例 → 输入 b，自动求解 a 与 x
+    </div>
+  </div>
+
+  <!-- Input -->
+  <div class="card">
+    <div class="sec-label"><span class="n">1</span>输入已知总额 b</div>
+
+    <div class="formula-banner">
+      <div class="fb-box unknown-a"><span class="fb-label">清偿额</span><span class="fb-sym">a</span></div>
+      <span class="op">+</span>
+      <div class="fb-box unknown-r"><span class="fb-label">管理人报酬</span><span class="fb-sym">x</span></div>
+      <span class="op">=</span>
+      <div class="fb-box known"><span class="fb-label">已知总额</span><span class="fb-sym">b</span></div>
+      <span class="op" style="padding:0 16px;font-size:0.8em;opacity:0.4">且</span>
+      <div class="fb-box unknown-r"><span class="fb-label">法律规定</span><span class="fb-sym">x = f(a)</span></div>
+    </div>
+
+    <div class="input-group">
+      <div class="input-prefix">清偿额 + 报酬 总额 b</div>
+      <input class="input-main" type="number" id="bInput" placeholder="0" min="0" step="1" />
+      <div class="input-suffix">元</div>
+    </div>
+    <div class="error-msg" id="errorMsg">⚠ 请输入有效的正数金额</div>
+    <div class="input-hint">例：输入 1,120,000 → 可得清偿额 a = 1,000,000，报酬 x = 120,000</div>
+    <button class="btn-calc" onclick="calculate()">立　即　计　算</button>
+  </div>
+
+  <!-- Results -->
+  <div class="result-section" id="resultSection">
+    <div class="card">
+      <div class="sec-label"><span class="n">2</span>计算结果</div>
+
+      <div class="result-trio">
+        <div class="rc total">
+          <div class="rc-tag">输入总额 b</div>
+          <div class="rc-val" id="r-b">—</div>
+          <div class="rc-sub">a + x = b</div>
+          <div class="rc-icon">Σ</div>
+        </div>
+        <div class="rc payout">
+          <div class="rc-tag">债权人清偿额 a</div>
+          <div class="rc-val" id="r-a">—</div>
+          <div class="rc-sub" id="r-a-pct">—</div>
+          <div class="rc-icon">💰</div>
+        </div>
+        <div class="rc reward">
+          <div class="rc-tag">管理人报酬 x</div>
+          <div class="rc-val" id="r-x">—</div>
+          <div class="rc-sub" id="r-x-pct">—</div>
+          <div class="rc-icon">⚖</div>
+        </div>
+      </div>
+
+      <div class="verify-bar">
+        <span class="vb-check">✓</span>
+        <span>验证：</span>
+        <span id="vb-text">—</span>
+      </div>
+
+      <hr class="divider">
+      <div class="steps-title">推导过程</div>
+      <div id="stepsContainer"></div>
+    </div>
+
+    <!-- Reference table with highlights -->
+    <div class="card">
+      <div class="sec-label"><span class="n">3</span>b 值区间对照表（当前档位高亮）</div>
+      <div class="ref-table">
+        <div class="rt-head">
+          <span>b 的区间（清偿额+报酬）</span>
+          <span>法定比例</span>
+          <span>a 对应区间</span>
+          <span>折算报酬比例</span>
+          <span>速算扣除数</span>
+        </div>
+        <div id="refTable"></div>
+      </div>
+      <div class="note">
+        <strong>折算报酬比例</strong> = 报酬比例对 b 而言 = rate/(1+rate)；<strong>速算扣除数</strong>配合折算比例一步计算：x = b × 折算比例 − 速算扣除数
+      </div>
+    </div>
+  </div>
+
+  <!-- Static reference table -->
+  <div class="card" id="staticCard">
+    <div class="sec-label"><span class="n">—</span>b 值区间对照参考表</div>
+    <div class="ref-table">
+      <div class="rt-head">
+        <span>b 的区间（清偿额+报酬）</span>
+        <span>法定比例</span>
+        <span>a 对应区间</span>
+        <span>折算报酬比例</span>
+        <span>速算扣除数</span>
+      </div>
+      <div id="staticRefTable"></div>
+    </div>
+    <div class="note">
+      已知 b，找到所在行，报酬 x = b × 折算比例 − 速算扣除数；清偿额 a = b − x
+    </div>
+  </div>
+
+  <div class="footer">本计算器仅供参考 · 具体金额以法院裁定为准</div>
+</div>
+
+<script>
+/**
+ * 法律逻辑：报酬 x = f(a) 为 a 的分段累加比例
+ * 已知 b = a + x，求 a 与 x
+ *
+ * 各段：a 在 [prevMax, curMax] 时，对应 b 在 [prevMax + f(prevMax), curMax + f(curMax)]
+ * 每段内：b = a + f_prev(a) + (a - prevMax)*rate
+ *          b = a*(1+rate) + [f_prev(prevMax) - prevMax*rate]
+ *          a = (b - C) / (1+rate)，其中 C 为该段常数
+ */
+
+// 清偿额 a 的分段区间和法定比例
+const A_TIERS = [
+  { aMin: 0,          aMax: 1000000,   rate: 0.12, aLabel: '0 ~ 100万' },
+  { aMin: 1000000,    aMax: 5000000,   rate: 0.10, aLabel: '100万 ~ 500万' },
+  { aMin: 5000000,    aMax: 10000000,  rate: 0.08, aLabel: '500万 ~ 1000万' },
+  { aMin: 10000000,   aMax: 50000000,  rate: 0.06, aLabel: '1000万 ~ 5000万' },
+  { aMin: 50000000,   aMax: 100000000, rate: 0.03, aLabel: '5000万 ~ 1亿' },
+  { aMin: 100000000,  aMax: 500000000, rate: 0.01, aLabel: '1亿 ~ 5亿' },
+  { aMin: 500000000,  aMax: Infinity,  rate: 0.005,aLabel: '超过5亿' },
+];
+
+// 预计算：每段 a 的上限对应的 b 上限，以及段内的线性常数 C
+// 段内：b = a*(1+rate) + C_seg
+// C_seg = 前段累计报酬 - aMin*rate（即 f(aMin) - aMin*rate 的累积修正）
+let cumRewardAtAMin = 0; // f(aMin) for current tier
+A_TIERS.forEach((t, i) => {
+  t.bMin = t.aMin + cumRewardAtAMin;   // b对应的段下限（即 aMin + f(aMin)）
+  // C_seg: b = a*(1+rate) + C_seg → C_seg = cumRewardAtAMin - aMin*rate
+  t.C = cumRewardAtAMin - t.aMin * t.rate;
+  // b上限
+  if (t.aMax !== Infinity) {
+    const rewardAtAMax = cumRewardAtAMin + (t.aMax - t.aMin) * t.rate;
+    t.bMax = t.aMax + rewardAtAMax;
+    cumRewardAtAMin = rewardAtAMax;
+  } else {
+    t.bMax = Infinity;
+  }
+  // 折算比例（对b而言）= rate/(1+rate)
+  t.D = t.rate / (1 + t.rate);
+  // 速算扣除数（对b）: x = b*D - deduct
+  // x = (b - C)/(1+rate) * rate = b * rate/(1+rate) - C*rate/(1+rate)
+  // deduct = C * rate/(1+rate) = C * D
+  t.deduct = t.C * t.D;
+});
+
+// 验证
+// b=112万: tier[0], a = (1120000 - 0)/(1.12) = 1000000, x=120000 ✓
+
+function calcFromB(b) {
+  const tier = A_TIERS.find(t => b > t.bMin && (t.bMax === Infinity || b <= t.bMax))
+               || A_TIERS[A_TIERS.length - 1];
+  const a = (b - tier.C) / (1 + tier.rate);
+  const x = b - a;
+  return { a, x, tier };
+}
+
+const fmt = n => n.toLocaleString('zh-CN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtPct = r => (r * 100).toFixed(6) + '%';
+const fmtPctShort = r => (r * 100).toFixed(1) + '%';
+
+function renderRefTable(id, activeTier) {
+  document.getElementById(id).innerHTML = A_TIERS.map(t => {
+    const isActive = t === activeTier;
+    const bMaxStr = t.bMax === Infinity ? '∞' : fmt(t.bMax);
+    return `<div class="rt-row${isActive ? ' rt-active' : ''}">
+      <span>${fmt(t.bMin)} ~ ${bMaxStr}${isActive ? '<span class="active-tag">当前</span>' : ''}</span>
+      <span>${fmtPctShort(t.rate)}</span>
+      <span>${t.aLabel}</span>
+      <span>${fmtPct(t.D)}</span>
+      <span>${fmt(t.deduct)}</span>
+    </div>`;
+  }).join('');
+}
+
+function calculate() {
+  const raw = document.getElementById('bInput').value.trim();
+  const err = document.getElementById('errorMsg');
+  const b = parseFloat(raw);
+
+  if (!raw || isNaN(b) || b <= 0) {
+    err.classList.add('show');
+    document.getElementById('resultSection').classList.remove('visible');
+    return;
+  }
+  err.classList.remove('show');
+
+  const { a, x, tier } = calcFromB(b);
+  const xPctOfA = x / a * 100;
+  const xPctOfB = x / b * 100;
+
+  document.getElementById('r-b').textContent = fmt(b) + ' 元';
+  document.getElementById('r-a').textContent = fmt(a) + ' 元';
+  document.getElementById('r-a-pct').textContent = '占 b 的 ' + (a/b*100).toFixed(4) + '%';
+  document.getElementById('r-x').textContent = fmt(x) + ' 元';
+  document.getElementById('r-x-pct').textContent = '为 a 的 ' + xPctOfA.toFixed(4) + '%（法定 ' + fmtPctShort(tier.rate) + '%）';
+
+  document.getElementById('vb-text').innerHTML =
+    `<span class="hl-g">${fmt(a)}</span> + <span class="hl-r">${fmt(x)}</span> = <span class="hl">${fmt(a + x)}</span> ≈ b（${fmt(b)}）`;
+
+  document.getElementById('stepsContainer').innerHTML = `
+    <div class="step-row">
+      <div class="step-dot">1</div>
+      <div>已知 b = <span class="hl">${fmt(b)} 元</span>，查对照表得所在区间：b ∈ [<span class="hl">${fmt(tier.bMin)}</span>, <span class="hl">${tier.bMax === Infinity ? '∞' : fmt(tier.bMax)}</span>]<br>
+      对应法定比例 rate = <span class="hl">${fmtPctShort(tier.rate)}</span>（清偿额 a 在 ${tier.aLabel} 区间）</div>
+    </div>
+    <div class="step-row">
+      <div class="step-dot">2</div>
+      <div>段内关系：b = a × (1 + rate) + C，其中常数 C = <span class="hl">${fmt(tier.C)}</span><br>
+      反推：a = (b − C) ÷ (1 + rate) = (<span class="hl">${fmt(b)}</span> − <span class="hl">${fmt(tier.C)}</span>) ÷ <span class="hl">${(1+tier.rate).toFixed(2)}</span> = <span class="hl-g">${fmt(a)} 元</span></div>
+    </div>
+    <div class="step-row">
+      <div class="step-dot">3</div>
+      <div>管理人报酬 x = b − a = <span class="hl">${fmt(b)}</span> − <span class="hl-g">${fmt(a)}</span> = <span class="hl-r">${fmt(x)} 元</span><br>
+      验证：x ÷ a = ${fmt(x)} ÷ ${fmt(a)} = <span class="hl">${xPctOfA.toFixed(6)}%</span>，法定上限 ${fmtPctShort(tier.rate)} ✓</div>
+    </div>
+    <div class="step-row">
+      <div class="step-dot">4</div>
+      <div>速算公式验证：x = b × 折算比例 − 速算扣除数<br>
+      = <span class="hl">${fmt(b)}</span> × <span class="hl">${fmtPct(tier.D)}</span> − <span class="hl">${fmt(tier.deduct)}</span> = <span class="hl-r">${fmt(b * tier.D - tier.deduct)} 元</span> ✓</div>
+    </div>
+    <div class="step-row step-final">
+      <div class="step-dot">✓</div>
+      <div>清偿额 a = <span class="hl-g">${fmt(a)} 元</span>，管理人报酬 x = <span class="hl-r">${fmt(x)} 元</span>（为清偿额的 ${xPctOfA.toFixed(4)}%）</div>
+    </div>`;
+
+  renderRefTable('refTable', tier);
+  document.getElementById('staticCard').style.display = 'none';
+  document.getElementById('resultSection').classList.add('visible');
+  document.getElementById('resultSection').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+document.getElementById('bInput').addEventListener('keydown', e => { if (e.key === 'Enter') calculate(); });
+
+// Static table on load
+renderRefTable('staticRefTable', null);
+</script>
+</body>
+</html>
